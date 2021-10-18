@@ -1,55 +1,3 @@
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use std::env;
-
-    #[test]
-    fn select_profile_with_selection() {
-        select_profile("ped");
-        let result = env::var("AWS_PROFILE").unwrap();
-        let expect = String::from("ped");
-        assert_eq!(expect, result);
-    }
-
-    #[test]
-    fn select_region_with_selection() {
-        select_region("ped");
-        let result = env::var("AWS_DEFAULT_REGION").unwrap();
-        let expect = String::from("ped");
-        assert_eq!(expect, result);
-    }
-
-    #[test]
-    fn parse_convert_to_map_test() {
-        let mut map = HashMap::new();
-        map.insert(String::from("key_1"), "ABC");
-        map.insert(String::from("key_2"), "50");
-        map.insert(String::from("key_3"), "value");
-        let result = to_key_list(&map);
-
-        assert!(result.iter().any(|&key| key == "key_1"));
-        assert!(result.iter().any(|&key| key == "key_2"));
-        assert!(result.iter().any(|&key| key == "key_3"));
-    }
-
-    // Flaky test
-    // #[test]
-    // fn parse_default_env_no_value() {
-    //     let result = default_env("CHECK");
-    //     let expect = String::from("");
-    //     assert_eq!(expect, result);
-    // }
-
-    #[test]
-    fn parse_default_env_has_value() {
-        env::set_var("CHECK", "value");
-        let result = default_env("CHECK");
-        let expect = String::from("value");
-        assert_eq!(expect, result);
-    }
-}
-
 use crate::cmdline::Opt;
 
 use awsp::helper::file::config::{create_profile_config_map_from, get_aws_config_file_path};
@@ -160,13 +108,12 @@ fn region_menu() {
 }
 
 fn exec_process() {
-    let current_pid = get_current_pid().ok().unwrap();
-    Command::new(find_shell(current_pid).unwrap())
+    Command::new(find_shell().unwrap())
         .spawn()
         .unwrap()
         .wait()
         .unwrap();
-    terminate_parent_process(current_pid);
+    terminate_parent_process();
 }
 
 fn default_env(env: &str) -> String {
@@ -186,7 +133,8 @@ fn to_key_list<K, V>(map: &HashMap<K, V>) -> Vec<&K> {
     key_list
 }
 
-fn find_shell(current_pid: i32) -> Option<PathBuf> {
+fn find_shell() -> Option<PathBuf> {
+    let current_pid = get_current_pid().ok().unwrap();
     let s = System::new_all();
     let current_process = s.process(current_pid)?;
     let parent_pid = current_process.parent()?;
@@ -195,7 +143,8 @@ fn find_shell(current_pid: i32) -> Option<PathBuf> {
     Some(shell_path.to_path_buf())
 }
 
-fn terminate_parent_process(pid: i32) {
+fn terminate_parent_process() {
+    let pid = get_current_pid().ok().unwrap();
     let s = System::new_all();
     let current_process = s.process(pid).unwrap();
     let parent_pid = current_process.parent().unwrap();
@@ -242,3 +191,55 @@ fn select_region(region: &str) {
 //     }
 //     Some(false)
 // }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use std::env;
+
+    #[test]
+    fn select_profile_with_selection() {
+        select_profile("ped");
+        let result = env::var("AWS_PROFILE").unwrap();
+        let expect = String::from("ped");
+        assert_eq!(expect, result);
+    }
+
+    #[test]
+    fn select_region_with_selection() {
+        select_region("ped");
+        let result = env::var("AWS_DEFAULT_REGION").unwrap();
+        let expect = String::from("ped");
+        assert_eq!(expect, result);
+    }
+
+    #[test]
+    fn parse_convert_to_map_test() {
+        let mut map = HashMap::new();
+        map.insert(String::from("key_1"), "ABC");
+        map.insert(String::from("key_2"), "50");
+        map.insert(String::from("key_3"), "value");
+        let result = to_key_list(&map);
+
+        assert!(result.iter().any(|&key| key == "key_1"));
+        assert!(result.iter().any(|&key| key == "key_2"));
+        assert!(result.iter().any(|&key| key == "key_3"));
+    }
+
+    // Flaky test
+    // #[test]
+    // fn parse_default_env_no_value() {
+    //     let result = default_env("CHECK");
+    //     let expect = String::from("");
+    //     assert_eq!(expect, result);
+    // }
+
+    #[test]
+    fn parse_default_env_has_value() {
+        env::set_var("CHECK", "value");
+        let result = default_env("CHECK");
+        let expect = String::from("value");
+        assert_eq!(expect, result);
+    }
+}
